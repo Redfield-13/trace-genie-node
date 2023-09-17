@@ -121,6 +121,38 @@ export class Test implements INodeType {
       
     }
     async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+
+        const mysql = require('mysql');
+
+        const connection = mysql.createConnection({
+          host: 'localhost',
+          user: 'trace',
+          password: 'Mj2002dr%',
+          database: 'results'
+        });
+
+        connection.connect((err: any) => {
+          if (err) throw err;
+          console.log('Connected!');
+        });
+        let i = 0
+
+        async function saveResultToFile(result: any) {
+          try {
+            const sqll = 'INSERT INTO finalS (name, address, occupants, postcode, town, phone, birthYear) VALUES (?, ?, ?, ?,?, ?,?)';
+            const values = [result.name, result.address, JSON.stringify(result.occupants), result.postcode, result.town, result.phone, result.year_of_birth];
+            connection.query(sqll, values, (err: any, result: any) => {
+              if (err) {
+                  console.error('Error inserting data: ', err);
+              } else {
+                  console.log('Record NO. ',i++,' : Data inserted successfully!');
+              }
+            }); 
+          } catch (err) {
+            console.error('Error saving file:', err);
+          }
+        }
+
         const items = this.getInputData();
         const length = items.length as unknown as number;
         const responseData: IDataObject[] = [];
@@ -129,26 +161,45 @@ export class Test implements INodeType {
         for (let i = 0; i < length; i++) {
           if (FetchType == 'postcode') {
             const postcode = this.getNodeParameter('post',i) as string;
-            const Url = `http://206.189.140.40:4000/postcodes?postcode=${postcode}`;
-            const response = await this.helpers.request({ method: 'GET', url: Url, json: true });
-            const trace = response
+            let Url = `http://localhost:4000/postcodes?postcode=${postcode}`;
+            let response = await this.helpers.request({ method: 'GET', url: Url, json: true });
+            let trace = response
+            if (trace.length == 0) {
+              Url = `http://localhost:9999/postcode?postcode=${postcode}`
+              response = await this.helpers.request({ method: 'GET', url: Url, json: true });
+              trace = response
+              for (const result of trace) {
+                await saveResultToFile(result);
+              }
+            }
             responseData.push({ postcode, trace });
           }
           if (FetchType == 'address') {
             const postcode = this.getNodeParameter('post',i) as string;
             const addr = this.getNodeParameter('addr',i) as string;
-            const Url = `http://206.189.140.40:4000/postcodes?postcode=${postcode}&address=${addr}`;
-            const response = await this.helpers.request({ method: 'GET', url: Url, json: true });
-            const trace = response
+            let Url = `http://localhost:4000/postcode&address?postcode=${postcode}&address=${addr}`;
+            let response = await this.helpers.request({ method: 'GET', url: Url, json: true });
+            let trace = response
+            if (trace.length == 0) {
+              Url = `http://localhost:9999/postcodes?postcode=${postcode}&address=${addr}`;
+              response = await this.helpers.request({ method: 'GET', url: Url, json: true });
+              trace = response
+            }
             responseData.push({ postcode, trace });
           }
           if (FetchType == 'town') {
             const Fname = this.getNodeParameter('Fname',i) as string;
             const Lname = this.getNodeParameter('Lname',i) as string;
             const townn = this.getNodeParameter('townn',i) as string;
-            const Url = `http://206.189.140.40:4000/name&town?name=${Fname} ${Lname}&town=${townn}`;
-            const response = await this.helpers.request({ method: 'GET', url: Url, json: true });
-            const trace = response
+            let Url = `http://localhost:4000/name&town?name=${Fname} ${Lname}&town=${townn}`;
+            let response = await this.helpers.request({ method: 'GET', url: Url, json: true });
+            let trace = response
+            if (trace.length == 0) {
+              Url = `http://localhost:9999/name?fname=${Fname}&lname=${Lname}&town=${townn}`;
+              response = await this.helpers.request({ method: 'GET', url: Url, json: true });
+              trace = response
+            }
+            
             responseData.push({ townn, trace });
           }
         }
