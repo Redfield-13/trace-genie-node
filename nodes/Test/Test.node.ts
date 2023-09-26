@@ -116,9 +116,9 @@ export class Test implements INodeType {
             },
           },
 
-        },   
+        },
       ],
-      
+
     }
     async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 
@@ -141,13 +141,17 @@ export class Test implements INodeType {
           try {
             const sqll = 'INSERT INTO finalS (name, address, occupants, postcode, town, phone, birthYear) VALUES (?, ?, ?, ?,?, ?,?)';
             const values = [result.name, result.address, JSON.stringify(result.occupants), result.postcode, result.town, result.phone, result.year_of_birth];
-            connection.query(sqll, values, (err: any, result: any) => {
-              if (err) {
-                  console.error('Error inserting data: ', err);
-              } else {
-                  console.log('Record NO. ',i++,' : Data inserted successfully!');
-              }
-            }); 
+            await new Promise((resolve,reject)=>{
+              connection.query(sqll, values, (err: any, result: any) => {
+                if (err) {
+                    console.error('Error inserting data: ', err);
+                } else {
+                    console.log('Record NO. ',i++,' : Data inserted successfully!');
+                    resolve(result)
+                }
+              }); 
+            })
+            
           } catch (err) {
             console.error('Error saving file:', err);
           }
@@ -157,7 +161,7 @@ export class Test implements INodeType {
         const length = items.length as unknown as number;
         const responseData: IDataObject[] = [];
         const FetchType = this.getNodeParameter('FetchType',0) as string;
-    
+
         for (let i = 0; i < length; i++) {
           if (FetchType == 'postcode') {
             const postcode = this.getNodeParameter('post',i) as string;
@@ -167,7 +171,7 @@ export class Test implements INodeType {
             if (trace.length == 0) {
               Url = `http://localhost:9999/postcode?postcode=${postcode}`
               response = await this.helpers.request({ method: 'GET', url: Url, json: true });
-              trace = response
+              trace = response.flat()
               for (const result of trace) {
                 await saveResultToFile(result);
               }
@@ -199,11 +203,11 @@ export class Test implements INodeType {
               response = await this.helpers.request({ method: 'GET', url: Url, json: true });
               trace = response
             }
-            
+
             responseData.push({ townn, trace });
           }
         }
-    
+
         return this.prepareOutputData(responseData.map((item) => ({ json: item })));
       }
     }
